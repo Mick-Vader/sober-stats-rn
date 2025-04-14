@@ -1,12 +1,16 @@
-import { FlatList, SafeAreaView, Text, TouchableOpacity, View } from "react-native";
+import { FlatList, SafeAreaView, Text, TouchableOpacity, View, Modal } from "react-native";
 import { useFonts } from 'expo-font';
 import { useEffect, useReducer, useState } from "react";
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_900Black } from '@expo-google-fonts/inter/900Black';
 import { Inter_600SemiBold_Italic } from '@expo-google-fonts/inter/600SemiBold_Italic';
 
 import { AVG_CALORIES_PER_DRINK, AVG_DRINKING_DAYS_PER_WEEK, AVG_DRINKS_PER_SESSION, AVG_PRICE_PER_DRINK } from "./constants";
+import { DatePicker } from '../components/nativewindui/DatePicker'
+import { Button } from '../components/nativewindui/Button'
 import "../index.css";
 
 export default function SoberScreen() {
@@ -15,6 +19,9 @@ export default function SoberScreen() {
     Inter_900Black,
     Inter_600SemiBold_Italic,
   });
+
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [date, setDate] = useState(new Date());
 
   const [weeksSober, setWeeksSober] = useState(0)
   const [daysSober, setDaysSober] = useState(0)
@@ -61,6 +68,19 @@ export default function SoberScreen() {
   
 
   useEffect(() => {
+    const retrieveData = async () => {
+      try {
+        const hoursSober = await AsyncStorage.getItem('hours_sober')
+        if(hoursSober == null) {
+          setModalVisible(true)
+        } else {
+          setHoursSober(parseInt(hoursSober))
+        }
+      } catch (e) {
+        // error reading value
+      }
+    }
+    retrieveData();
     if(hoursSober > 0) {
       setDaysSober(Math.round((hoursSober / 24 + Number.EPSILON) * 10) / 10);
       const weeks = Math.round((hoursSober / (24 * 7) + Number.EPSILON) * 10) / 10;
@@ -89,6 +109,27 @@ export default function SoberScreen() {
 
   return (
     <SafeAreaView className="flex-1 items-center pt-20 bg-white p-4">
+      <Modal
+      transparent={true}
+      visible={isModalVisible}
+      onRequestClose={() => setModalVisible(false)}
+      >
+        <View className="flex-1 justify-center items-center bg-black/50">
+          <View className="bg-white p-5 rounded-lg">
+            <Text className="text-lg font-semibold text-black">
+              This is a modal!
+            </Text>
+            <Button
+              onPress={() => setModalVisible(false)}
+              className="mt-4 p-2 bg-blue-500 rounded"
+            >
+              <Text style={{ fontFamily: "Inter_600SemiBold" }} className="text-white">
+                Close
+              </Text>
+            </Button>
+          </View>
+        </View>
+      </Modal>
       <TouchableOpacity
         // TODO: Add a click function to change format i.e. Days to Weeks to Hours and back again
         onPress={() => null}
