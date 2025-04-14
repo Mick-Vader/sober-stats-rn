@@ -1,6 +1,6 @@
 import { FlatList, SafeAreaView, Text, TouchableOpacity, View, Modal } from "react-native";
 import { useFonts } from 'expo-font';
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -19,17 +19,27 @@ export default function SoberScreen() {
     Inter_900Black,
     Inter_600SemiBold_Italic,
   });
-
+  const today = new Date();
   const [isModalVisible, setModalVisible] = useState(false);
   const [date, setDate] = useState(new Date());
 
+  const [savedDate, setSavedDate] = useState(new Date())
+
   const [weeksSober, setWeeksSober] = useState(0)
   const [daysSober, setDaysSober] = useState(0)
-  const [hoursSober, setHoursSober] = useState(346)
+  const [hoursSober, setHoursSober] = useState(0)
 
-  const [moneySaved, setMoneySaved] = useState('')
-  const [caloriesAvoided, setCaloriesAvoided] = useState('')
-  const [hFWEDays, setHFWEDays] = useState('')
+  const [stats, setStats] = useState({
+    moneySaved: '',
+    caloriesAvoided: '',
+    hFWEDays: '',
+  });
+
+  const statsData = useMemo(() => [
+    { name: 'saved', value: stats.moneySaved },
+    { name: 'calories avoided', value: stats.caloriesAvoided },
+    { name: 'weekend days hangover free', value: stats.hFWEDays },
+  ], [stats]);
 
   /**
    * Calculates the total money saved by staying sober.
@@ -39,8 +49,8 @@ export default function SoberScreen() {
    * @returns {string} A string representation of the calculated money saved, rounded to two decimal places.
    */
 
-  function calculateMoneySaved(): string {
-    return `€${Math.round((weeksSober * AVG_DRINKING_DAYS_PER_WEEK) * (AVG_DRINKS_PER_SESSION * AVG_PRICE_PER_DRINK) * 10 + Number.EPSILON) / 10}`;
+  function calculateMoneySaved(weeks: number): string {
+    return `€${Math.round((weeks * AVG_DRINKING_DAYS_PER_WEEK) * (AVG_DRINKS_PER_SESSION * AVG_PRICE_PER_DRINK) * 10 + Number.EPSILON) / 10}`;
   }
 
   /**
@@ -50,8 +60,8 @@ export default function SoberScreen() {
    * 
    * @returns {string} A string representation of the calculated calories avoided, rounded to two decimal places.
    */
-  function calculateCaloriesAvoided(): string {
-    return `${Math.round((weeksSober * AVG_DRINKING_DAYS_PER_WEEK) * (AVG_DRINKS_PER_SESSION * AVG_CALORIES_PER_DRINK) * 10 + Number.EPSILON) / 10}`;
+  function calculateCaloriesAvoided(weeks: number): string {
+    return `${Math.round((weeks * AVG_DRINKING_DAYS_PER_WEEK) * (AVG_DRINKS_PER_SESSION * AVG_CALORIES_PER_DRINK) * 10 + Number.EPSILON) / 10}`;
   }
 
   /**
@@ -62,11 +72,30 @@ export default function SoberScreen() {
    * @returns {string} A string representation of the calculated HFWEDays, rounded to two decimal places.
    */
 
-  function calculateHFWEDays(): string {
-    return `${Math.round((weeksSober * (AVG_DRINKING_DAYS_PER_WEEK * 1.5) + Number.EPSILON) * 10) / 10}`;
+  function calculateHFWEDays(weeks: number): string {
+    return `${Math.round((weeks * (AVG_DRINKING_DAYS_PER_WEEK * 1.5) + Number.EPSILON) * 10) / 10}`;
+  }
+
+  function handleSetSavedDate() {
+    setSavedDate(date);
+    setModalVisible(false);
+  }
+
+  function handleStats() {
+    const days = Math.round((hoursSober / 24 + Number.EPSILON) * 10) / 10;
+    const weeks = Math.round((hoursSober / (24 * 7) + Number.EPSILON) * 10) / 10;
+  
+    setDaysSober(days);
+    setWeeksSober(weeks);
+  
+    setStats({
+      moneySaved: calculateMoneySaved(weeks),
+      caloriesAvoided: calculateCaloriesAvoided(weeks),
+      hFWEDays: calculateHFWEDays(weeks),
+    });
   }
   
-
+  
   useEffect(() => {
     const retrieveData = async () => {
       try {
@@ -77,31 +106,39 @@ export default function SoberScreen() {
           setHoursSober(parseInt(hoursSober))
         }
       } catch (e) {
-        // error reading value
+        console.error(e)
       }
     }
     retrieveData();
     if(hoursSober > 0) {
-      setDaysSober(Math.round((hoursSober / 24 + Number.EPSILON) * 10) / 10);
-      const weeks = Math.round((hoursSober / (24 * 7) + Number.EPSILON) * 10) / 10;
-      setWeeksSober(weeks);
-
-      const money = calculateMoneySaved();
-      const calories = calculateCaloriesAvoided();
-      const hFWE = calculateHFWEDays();
-
-      setMoneySaved(money);
-      setCaloriesAvoided(calories);
-      setHFWEDays(hFWE);
-
+      handleStats();
     } else {
       setDaysSober(0);
       setWeeksSober(0);
-      setMoneySaved('Nothing');
-      setCaloriesAvoided('No');
-      setHFWEDays('No');
+      setStats({
+        moneySaved: 'Nothing',
+        caloriesAvoided: 'No',
+        hFWEDays: 'No',
+      })
     }
   }, [])
+
+  useEffect(() => {
+    const timeDifference = today.getTime() - savedDate.getTime();
+    setHoursSober(Math.round(timeDifference / (1000 * 60 * 60)));
+    const setHoursSoberInStorage = async () => {
+      try {
+        await AsyncStorage.setItem('hours_sober', hoursSober.toString())
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    setHoursSoberInStorage();
+  }, [savedDate])
+
+  useEffect(() => {
+    handleStats();
+  }, [hoursSober])
 
   if (!fontsLoaded) {
     return null;
@@ -115,16 +152,23 @@ export default function SoberScreen() {
       onRequestClose={() => setModalVisible(false)}
       >
         <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="bg-white p-5 rounded-lg">
-            <Text className="text-lg font-semibold text-black">
-              This is a modal!
-            </Text>
+          <View className="bg-white p-5 rounded-lg w-11/12 max-w-md h-1/5 justify-center">
+          <DatePicker
+            value={date}
+            mode="date"
+            onChange={(ev) => {
+                setDate(new Date(ev.nativeEvent.timestamp));
+            }}
+            maximumDate={today}
+            materialDateLabel=""
+            materialDateLabelClassName="hidden"
+          />
             <Button
-              onPress={() => setModalVisible(false)}
-              className="mt-4 p-2 bg-blue-500 rounded"
+              onPress={() => handleSetSavedDate()}
+              className="mt-4 p-2 bg-black rounded"
             >
               <Text style={{ fontFamily: "Inter_600SemiBold" }} className="text-white">
-                Close
+                Set Sober Start Day
               </Text>
             </Button>
           </View>
@@ -145,7 +189,7 @@ export default function SoberScreen() {
           style={{ fontFamily: "Inter_600SemiBold" }}
           className="text-6xl font-semibold text-black mb-8 pb-2 pt-2"
         >
-          Days Sober
+          {daysSober === 1 ? 'Day Sober' : 'Days Sober'}
         </Text>
       </TouchableOpacity>
       <View className="w-full rounded-2xl border border-gray-300 p-6">
@@ -156,7 +200,7 @@ export default function SoberScreen() {
           The Stats
         </Text>
         <FlatList
-          data={[{name: 'saved', value: moneySaved}, {name: 'calories avoided', value: caloriesAvoided}, {name: 'weekend days hangover free', value: hFWEDays}]}
+          data={statsData}
           renderItem={({item}) => (
             <Text
               className="text-2xl text-black border-b border-gray-300 px-4 py-2"
