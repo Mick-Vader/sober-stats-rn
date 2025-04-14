@@ -1,6 +1,7 @@
 import { FlatList, SafeAreaView, Text, TouchableOpacity, View } from "react-native";
 import { useFonts } from 'expo-font';
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
+import { MMKVLoader } from "react-native-mmkv-storage";
 
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_900Black } from '@expo-google-fonts/inter/900Black';
@@ -10,11 +11,13 @@ import { AVG_CALORIES_PER_DRINK, AVG_DRINKING_DAYS_PER_WEEK, AVG_DRINKS_PER_SESS
 import "../index.css";
 
 export default function SoberScreen() {
+  const MMKV = new MMKVLoader().initialize();
   let [fontsLoaded] = useFonts({
     Inter_600SemiBold,
     Inter_900Black,
     Inter_600SemiBold_Italic,
   });
+
   const [weeksSober, setWeeksSober] = useState(0)
   const [daysSober, setDaysSober] = useState(0)
   const [hoursSober, setHoursSober] = useState(346)
@@ -60,6 +63,8 @@ export default function SoberScreen() {
   
 
   useEffect(() => {
+    const startDate = MMKV.getString("start_date") || null;
+
     if(hoursSober > 0) {
       setDaysSober(Math.round((hoursSober / 24 + Number.EPSILON) * 10) / 10);
       const weeks = Math.round((hoursSober / (24 * 7) + Number.EPSILON) * 10) / 10;
