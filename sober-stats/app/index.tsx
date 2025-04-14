@@ -23,11 +23,11 @@ export default function SoberScreen() {
   const [isModalVisible, setModalVisible] = useState(false);
   const [date, setDate] = useState(new Date());
 
-  const [savedDate, setSavedDate] = useState(new Date())
+  const [savedDate, setSavedDate] = useState<Date | null>(null);
 
-  const [weeksSober, setWeeksSober] = useState(0)
-  const [daysSober, setDaysSober] = useState(0)
-  const [hoursSober, setHoursSober] = useState(0)
+  const [weeksSober, setWeeksSober] = useState(0);
+  const [daysSober, setDaysSober] = useState(0);
+  const [hoursSober, setHoursSober] = useState(0);
 
   const [stats, setStats] = useState({
     moneySaved: '',
@@ -94,16 +94,22 @@ export default function SoberScreen() {
       hFWEDays: calculateHFWEDays(weeks),
     });
   }
+
+  function getHoursSober(soberStartDate: string) {
+    const soberStart = new Date(soberStartDate);
+    const timeDifference = today.getTime() - soberStart.getTime();
+    return Math.round(timeDifference / (1000 * 60 * 60));
+  }
   
   
   useEffect(() => {
     const retrieveData = async () => {
       try {
-        const hoursSober = await AsyncStorage.getItem('hours_sober')
-        if(hoursSober == null) {
+        const soberStartDate = await AsyncStorage.getItem('sober_start_date')
+        if(soberStartDate == null) {
           setModalVisible(true)
         } else {
-          setHoursSober(parseInt(hoursSober))
+          setHoursSober(getHoursSober(soberStartDate))
         }
       } catch (e) {
         console.error(e)
@@ -124,16 +130,17 @@ export default function SoberScreen() {
   }, [])
 
   useEffect(() => {
+    if (!savedDate || savedDate === null) return;
     const timeDifference = today.getTime() - savedDate.getTime();
     setHoursSober(Math.round(timeDifference / (1000 * 60 * 60)));
-    const setHoursSoberInStorage = async () => {
+    const setSoberStartDateInStorage = async () => {
       try {
-        await AsyncStorage.setItem('hours_sober', hoursSober.toString())
+        await AsyncStorage.setItem('sober_start_date', savedDate.toISOString())
       } catch (e) {
         console.error(e)
       }
     }
-    setHoursSoberInStorage();
+    setSoberStartDateInStorage();
   }, [savedDate])
 
   useEffect(() => {
