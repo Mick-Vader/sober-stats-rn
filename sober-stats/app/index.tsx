@@ -7,8 +7,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_900Black } from '@expo-google-fonts/inter/900Black';
 import { Inter_600SemiBold_Italic } from '@expo-google-fonts/inter/600SemiBold_Italic';
+import { AlexBrush_400Regular } from '@expo-google-fonts/alex-brush'
+import { DancingScript_400Regular } from '@expo-google-fonts/dancing-script'
 
-import { AVG_CALORIES_PER_DRINK, AVG_DRINKING_DAYS_PER_WEEK, AVG_DRINKS_PER_SESSION, AVG_PRICE_PER_DRINK } from "./constants";
+import { AVG_CALORIES_PER_DRINK, AVG_DRINKING_DAYS_PER_WEEK, AVG_DRINKS_PER_SESSION, AVG_PRICE_PER_DRINK, INSPIRATIONAL_IRISH_QUOTES } from "./constants";
 import { DatePicker } from '../components/nativewindui/DatePicker'
 import { Button } from '../components/nativewindui/Button'
 import "../index.css";
@@ -18,11 +20,17 @@ export default function SoberScreen() {
     Inter_600SemiBold,
     Inter_900Black,
     Inter_600SemiBold_Italic,
+    AlexBrush_400Regular,
+    DancingScript_400Regular
   });
   const today = new Date();
+
+  const randomQuote = INSPIRATIONAL_IRISH_QUOTES[Math.floor(Math.random() * INSPIRATIONAL_IRISH_QUOTES.length)];
+
   const [isModalVisible, setModalVisible] = useState(false);
   const [date, setDate] = useState(new Date());
 
+  const [displayMode, setDisplayMode] = useState('days');
   const [savedDate, setSavedDate] = useState<Date | null>(null);
 
   const [weeksSober, setWeeksSober] = useState(0);
@@ -100,8 +108,14 @@ export default function SoberScreen() {
     const timeDifference = today.getTime() - soberStart.getTime();
     return Math.round(timeDifference / (1000 * 60 * 60));
   }
-  
-  
+
+  const toggleDisplayMode = () => {
+    if (displayMode === 'days') setDisplayMode('hours');
+    else if (displayMode === 'hours') setDisplayMode('weeks');
+    else setDisplayMode('days');
+  };
+
+
   useEffect(() => {
     const retrieveData = async () => {
       try {
@@ -152,7 +166,7 @@ export default function SoberScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 items-center pt-20 bg-white p-4">
+    <SafeAreaView className="flex-1 items-center pt-10 bg-white p-4">
       <Modal
       transparent={true}
       visible={isModalVisible}
@@ -181,22 +195,26 @@ export default function SoberScreen() {
           </View>
         </View>
       </Modal>
-      <TouchableOpacity
-        // TODO: Add a click function to change format i.e. Days to Weeks to Hours and back again
-        onPress={() => null}
-        className="p-4 items-center"
-      >
+      <TouchableOpacity onPress={toggleDisplayMode} className="w-full">
         <Text
           style={{ fontFamily: "Inter_900Black" }}
-          className="text-9xl font-bold text-black pt-1"
+          className="text-9xl font-bold text-black pt-1 text-center"
         >
-          {daysSober}
+          {displayMode === 'days'
+            ? daysSober
+            : displayMode === 'hours'
+            ? hoursSober
+            : weeksSober}
         </Text>
         <Text
           style={{ fontFamily: "Inter_600SemiBold" }}
-          className="text-6xl font-semibold text-black mb-8 pb-2 pt-2"
+          className="text-6xl font-semibold text-black mb-8 pb-2 pt-2 text-center"
         >
-          {daysSober === 1 ? 'Day Sober' : 'Days Sober'}
+          {displayMode === 'days'
+            ? daysSober === 1 ? 'Day Sober' : 'Days Sober'
+            : displayMode === 'hours'
+            ? hoursSober === 1 ? 'Hour Sober' : 'Hours Sober'
+            : weeksSober === 1 ? 'Week Sober' : 'Weeks Sober'}
         </Text>
       </TouchableOpacity>
       <View className="w-full rounded-2xl border border-gray-300 p-6">
@@ -206,11 +224,13 @@ export default function SoberScreen() {
         >
           The Stats
         </Text>
-        <FlatList
+        {
+          weeksSober >= 1 ? (
+          <FlatList
           data={statsData}
           renderItem={({item}) => (
             <Text
-              className="text-2xl text-black border-b border-gray-300 px-4 py-2"
+              className="text-2xl text-black border-gray-300 px-4 py-2"
             >
               <Text
                 style={{ fontFamily: "Inter_600SemiBold" }}
@@ -227,6 +247,15 @@ export default function SoberScreen() {
           )}
           keyExtractor={item => item.name}
         />
+          ) : (
+            <Text className="text-xl text-black mb-4 text-center">Check back in a few days!</Text>
+          )
+        }
+      </View>
+      <View className="flex-row gap-3">
+        <Text className="text-5xl text-center text-black pt-12" style={{ fontFamily: 'DancingScript_400Regular' }}>
+          {randomQuote}
+        </Text>
       </View>
     </SafeAreaView>
   );
